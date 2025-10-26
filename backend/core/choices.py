@@ -13,11 +13,12 @@ class SubscriptionStatus(TextChoices):
     EXPIRED = "EXPIRED", "Expired"
     CANCELLED = "CANCELLED", "Cancelled"
     PENDING = "PENDING", "Pending"
+    TRIAL = "TRIAL", "Trial"
 
 
 class UserKind(TextChoices):
     ADMIN = "ADMIN", "Admin"
-    CUSTOMER = "CUSTOMER", "Customer"
+    EMPLOYEE = "EMPLOYEE", "Employee"
     MANAGER = "MANAGER", "Manager"
     STAFF = "STAFF", "Staff"
     SUPER_ADMIN = "SUPER_ADMIN", "Super Admin"
@@ -31,8 +32,17 @@ class UserGender(TextChoices):
     UNKNOWN = "UNKNOWN", "Unknown"
 
 
-class RouterType(TextChoices):
-    MIKROTIK = "MIKROTIK", "Mikrotik"
-    UBIQUITI = "UBIQUITI", "Ubiquiti"
-    CISCO = "CISCO", "Cisco"
+class OTPType(TextChoices):
+    PASSWORD_RESET = "PASSWORD_RESET", "Password_Reset"
+    USER_VERIFICATION = "USER_VERIFICATION", "User_Verification"
+    TRANSACTION_VERIFICATION = "TRANSACTION_VERIFICATION", "Transaction_Verification"
     OTHER = "OTHER", "Other"
+
+
+class BillingCycle(TextChoices):
+    MONTHLY = "MONTHLY", "Monthly"
+    DAYS30 = "DAYS_30", "Days_30"
+    DAYS_60 = "DAYS_60", "Days_60"
+    DAYS_90 = "DAYS_90", "Days_90"
+    DAYS_120 = "DAYS_120", "Days_120"
+    YEARLY = "YEARLY", "Yearly"

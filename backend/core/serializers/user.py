@@ -1,12 +1,12 @@
 """Serializer for user model."""
 
-from django.contrib.auth import get_user_model, authenticate
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from rest_framework import status
-from rest_framework import serializers
+from rest_framework import status, serializers
 from rest_framework.exceptions import APIException
 from core.choices import SubscriptionStatus, UserKind
+from core.serializers.organization import OrganizationLiteSerializer
 
 User = get_user_model()
 
@@ -21,6 +21,26 @@ class UserLiteSerializer(serializers.ModelSerializer):
 
 
 class UserListSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+        trim_whitespace=False,
+    )
+    confirm_password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+        trim_whitespace=False,
+    )
+
+    def validate_password(self, value):
+        password = value
+        confirm_password = self.initial_data.get("confirm_password", "")
+        if password != confirm_password:
+            raise serializers.ValidationError(
+                {"message": "Password and confirm password don't match!!!"}
+            )
+        return value
+
     class Meta:
         model = User
         fields = (
@@ -33,12 +53,19 @@ class UserListSerializer(serializers.ModelSerializer):
             "gender",
             "kind",
             "image",
+            "password",
+            "confirm_password",
         )
         read_only_fields = ("id", "uid")
 
     def create(self, validated_data):
-        validated_data["organization_id"] = self.context["request"].user.organization_id
-        return super().create(validated_data)
+        # validated_data["organization_id"] = self.context["request"].user.organization_id
+        validated_data.pop("confirm_password", None)
+        user = User(**validated_data)
+        user.set_password(validated_data.get("password", ""))
+        user.organization_id = self.context["request"].user.organization_id
+        user.save()
+        return user
 
 
 class UserDetailSerializer(UserListSerializer):
@@ -51,10 +78,9 @@ class UserDetailSerializer(UserListSerializer):
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
-    # Specify password and confirm_password fields as write_only, meaning they won't be included in responses
     password = serializers.CharField(
         write_only=True,
-        style={"input_type": "password"},  # Styling to indicate it's a password field
+        style={"input_type": "password"},
         trim_whitespace=False,
     )
     confirm_password = serializers.CharField(
@@ -63,19 +89,17 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         trim_whitespace=False,
     )
 
-    # Custom validation for password to check if it matches confirm_password
     def validate_password(self, value):
         password = value
         confirm_password = self.initial_data.get("confirm_password", "")
         if password != confirm_password:
             raise serializers.ValidationError(
-                detail="Password and confirm password don't match!!!",  # Error message
-                code=status.HTTP_400_BAD_REQUEST,  # HTTP status code
+                {"message": "Password and confirm password don't match!!!"}
             )
         return value
 
     class Meta:
-        model = User  # Specify the model for the serializer
+        model = User
         fields = (
             "first_name",
             "last_name",
@@ -85,20 +109,106 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             "image",
             "password",
             "confirm_password",
-        )  # Fields to include in the serialization
+        )
 
-    # Custom create method to handle user creation
     def create(self, validated_data):
-        validated_data.pop(
-            "confirm_password", None
-        )  # Remove confirm_password from validated data
-        user = User(**validated_data)  # Create a new user instance with validated data
-        user.set_password(validated_data.get("password", ""))  # Set user's password
-        user.save()  # Save the user to the database
-        return user  # Return the created user instance
+        validated_data.pop("confirm_password", None)
+        user = User(**validated_data)
+        user.set_password(validated_data.get("password", ""))
+        user.save()
+        return user
+
+
+class UserPasswordForceResetSerializer(serializers.Serializer):
+    password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+        trim_whitespace=False,
+    )
+    confirm_password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+        trim_whitespace=False,
+    )
+
+    def validate_password(self, value):
+        password = value
+        confirm_password = self.initial_data.get("confirm_password", "")
+        if password != confirm_password:
+            raise serializers.ValidationError(
+                {"message": "Password and confirm password don't match!!!"}
+            )
+        return value
+
+
+class ForgetPasswordSerializer(serializers.Serializer):
+    phone = serializers.CharField(required=True)
+    otp = serializers.CharField(required=False, allow_blank=True, max_length=6)
+    password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+        trim_whitespace=False,
+        required=False,
+    )
+    confirm_password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+        trim_whitespace=False,
+        required=False,
+    )
+
+    def validate(self, attrs):
+        phone = attrs.get("phone")
+        otp = attrs.get("otp")
+        password = attrs.get("password")
+        confirm_password = attrs.get("confirm_password")
+
+        if not phone:
+            raise serializers.ValidationError({"message": "Phone number is required."})
+
+        if otp:
+            if not password or not confirm_password:
+                raise serializers.ValidationError(
+                    {"message": "Password and confirm password are required."}
+                )
+            if password != confirm_password:
+                raise serializers.ValidationError(
+                    {"message": "Password and confirm password don't match."}
+                )
+
+        return attrs
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+        trim_whitespace=False,
+    )
+    new_password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+        trim_whitespace=False,
+    )
+    confirm_new_password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+        trim_whitespace=False,
+    )
+
+    def validate_new_password(self, value):
+        new_password = value
+        confirm_new_password = self.initial_data.get("confirm_new_password", "")
+        if new_password != confirm_new_password:
+            raise serializers.ValidationError(
+                {"message": "New password and confirm new password don't match!!!"}
+            )
+        return value
 
 
 class MeSerializer(serializers.ModelSerializer):
+    organization = OrganizationLiteSerializer(read_only=True)
+
     class Meta:
         model = User
         fields = (
@@ -110,8 +220,10 @@ class MeSerializer(serializers.ModelSerializer):
             "email",
             "gender",
             "image",
+            "kind",
             "created_at",
             "updated_at",
+            "organization",
         )
         read_only_fields = (
             "id",
@@ -132,39 +244,34 @@ class LoginSerializer(serializers.Serializer):
     )
 
     def validate(self, attrs):
-        phone = attrs.get("phone", None)
-        password = attrs.get("password", None)
+        phone = attrs.get("phone")
+        password = attrs.get("password")
+
         if not phone:
             raise serializers.ValidationError(
-                detail="Phone number is required for login",
-                code=status.HTTP_400_BAD_REQUEST,
+                {"message": "Phone number is required for login"},
+                status.HTTP_400_BAD_REQUEST,
             )
+
         if not password:
             raise serializers.ValidationError(
-                detail="A password is requied for login",
-                code=status.HTTP_400_BAD_REQUEST,
+                {"message": "A password is required for login"},
+                status.HTTP_400_BAD_REQUEST,
             )
-        # user = authenticate(username=phone, password=password)
-        # if user is None:
-        #     raise APIException(
-        #         detail="Invalid Credentials", code=status.HTTP_400_BAD_REQUEST
-        #     )
-        # if not user.is_active:
-        #     raise APIException(
-        #         detail="User is not active", code=status.HTTP_400_BAD_REQUEST
-        #     )
+
         user = (
             User.objects.filter(phone=phone, is_active=True)
             .select_related("organization")
             .first()
         )
-        print("User ", user)
+
         if not user or not user.check_password(password):
-            raise APIException(
-                detail="Invalid Credentials", code=status.HTTP_400_BAD_REQUEST
+            raise serializers.ValidationError(
+                {"message": "Invalid Credentials entered!!!"},
+                status.HTTP_400_BAD_REQUEST,
             )
+
         if user.is_superuser or user.kind == UserKind.SUPER_ADMIN:
-            print("super admin login")
             return {
                 "id": user.id,
                 "uid": str(user.uid),
@@ -175,28 +282,30 @@ class LoginSerializer(serializers.Serializer):
                 "kind": user.kind,
                 "is_superuser": user.is_superuser,
             }
+
         if (
             user.organization
             and user.organization.subscription_status != SubscriptionStatus.ACTIVE
         ):
-            raise APIException(
-                detail="Your organization is not active. Please contact with support.",
-                code=status.HTTP_400_BAD_REQUEST,
+            raise serializers.ValidationError(
+                {"message": "Your organization is not active. Please contact support."}
             )
-        # print("user organization end date:", user.organization.subscription_end_date)
-        # print("user organization:", user.organization)
+
         if user.organization and not user.organization.subscription_end_date:
-            raise APIException(
-                detail="Your organization subscription end date is not set. Please contact with support.",
-                code=status.HTTP_400_BAD_REQUEST,
+            raise serializers.ValidationError(
+                {
+                    "message": "Your organization subscription end date is not set. Please contact support."
+                }
             )
+
         if (
             user.organization
             and user.organization.subscription_end_date < timezone.now().date()
         ):
-            raise APIException(
-                detail="Your organization subscription has expired. Please contact with support.",
-                code=status.HTTP_400_BAD_REQUEST,
+            raise serializers.ValidationError(
+                {
+                    "message": "Your organization subscription has expired. Please contact support."
+                }
             )
 
         return {

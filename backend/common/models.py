@@ -14,34 +14,31 @@ class BaseModelWithUID(models.Model):
         db_index=True,
         unique=True,
     )
-    status = models.CharField(
-        max_length=20,
-        choices=Status.choices,
-        db_index=True,
-        default=Status.ACTIVE,
-    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(
+        blank=True,
+        null=True,
+    )
 
     class Meta:
         abstract = True
 
     def get_all_actives(self):
-        return self.__class__.objects.filter(status=Status.ACTIVE).order_by(
-            "-created_at"
-        )
+        return self.__class__.objects.filter(is_deleted=False).order_by("-pk")
 
-    def get_all_non_inactives(self):
-        return self.__class__.objects.exclude(status=Status.INACTIVE).order_by(
-            "-created_at"
-        )
+    # def get_all_non_inactives(self):
+    #     return self.__class__.objects.exclude(status=Status.INACTIVE).order_by(
+    #         "-created_at"
+    #     )
 
 
 class NameDescriptionBaseModel(BaseModelWithUID):
     name = models.CharField(
         max_length=255,
         db_index=True,
-        blank=True,
     )
     description = models.TextField(
         blank=True,
@@ -62,6 +59,28 @@ class NameDescriptionBaseModel(BaseModelWithUID):
         null=True,
         verbose_name=("last updated by"),
         related_name="%(app_label)s_%(class)s_updated_by",
+    )
+
+    class Meta:
+        abstract = True
+
+
+class BaseModelWithOrganization(BaseModelWithUID):
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="%(app_label)s_%(class)s_organization",
+    )
+
+    class Meta:
+        abstract = True
+
+
+class NameDescriptionWithOrganization(NameDescriptionBaseModel):
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="%(app_label)s_%(class)s_organization",
     )
 
     class Meta:

@@ -3,7 +3,7 @@ import json
 
 SMS_URL: str = "http://bulksmsbd.net/api"
 SMS_API_KEY: str = "REaJMMMxbc00PNs9N9xH"
-SMS_SENDER_ID: str = "Random"  # Replace with your sender ID
+SMS_SENDER_ID: str = "8809617629227"  # Replace with your sender ID
 
 
 class SMS:
@@ -35,13 +35,14 @@ class SMS:
         body = {
             "api_key": SMS_API_KEY,
             "senderid": SMS_SENDER_ID,
-            "messages": messages,
+            "messages": json.dumps(messages),
         }
+
         url: str = SMS_URL + "/smsapimany"
         try:
-            response = requests.post(url, data=json.dumps(body))
+            response = requests.post(url, data=body)
             response.raise_for_status()
-            if response.status_code != 202:
+            if response.status_code not in [200, 202]:
                 print(f"Failed to send SMS, {response.text}")
                 return False
             return True

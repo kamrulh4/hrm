@@ -8,69 +8,67 @@ from django.db import models
 
 
 from common.models import BaseModelWithUID, NameDescriptionBaseModel
-
-from core.choices import UserKind, UserGender, SubscriptionType, SubscriptionStatus
+from common.choices import Status
+from core.choices import (
+    UserKind,
+    UserGender,
+    SubscriptionType,
+    SubscriptionStatus,
+    OTPType,
+    BillingCycle,
+)
 from core.utils import get_user_media_path_prefix
 
 
 class Subscription(NameDescriptionBaseModel):
-    """Model representing organization subscriptions."""
+    """Subscription model."""
 
-    plan = models.CharField(
-        max_length=20,
-        choices=SubscriptionType.choices,
-        default=SubscriptionType.FREE,
-    )
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    max_customers = models.IntegerField(default=100)
-
-    def __str__(self):
-        return f"{self.name} - {self.plan}"
+    max_user = models.PositiveIntegerField(default=5)
+    duration_in_days = models.PositiveIntegerField(default=30)
 
     class Meta:
         verbose_name = "Subscription"
         verbose_name_plural = "Subscriptions"
-        ordering = ["-pk"]
-
-
-class Organization(NameDescriptionBaseModel):
-    """Model representing an ISP organization."""
-
-    # owner = models.ForeignKey(
-    #     "User", on_delete=models.PROTECT, related_name="owned_organizations"
-    # )
-    address = models.TextField(blank=True)
-    phone = models.CharField(max_length=20)
-    email = models.EmailField(blank=True)
-    website = models.URLField(blank=True)
-    subscription = models.ForeignKey(
-        Subscription, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    subscription_status = models.CharField(
-        max_length=20,
-        choices=SubscriptionStatus.choices,
-        default=SubscriptionStatus.PENDING,
-    )
-    # Mikrotik credentials
-    router_ip = models.CharField(max_length=64, blank=True)
-    router_username = models.CharField(max_length=150, blank=True)
-    router_password = models.CharField(max_length=128, blank=True)
-    router_port = models.IntegerField(default=8728, blank=True)
-    router_secret = models.CharField(max_length=150, blank=True)
-    router_ssl = models.BooleanField(
-        default=False, help_text="Use SSL for Mikrotik connection"
-    )
-    # Additional fields for better organization management
-
-    # Organization status
-    # is_active = models.BooleanField(default=True)
-    subscription_end_date = models.DateField(null=True, blank=True)
-    logo = models.ImageField(upload_to="organizations/", blank=True)
-    allowed_customer = models.IntegerField(default=0)
-    total_customer = models.IntegerField(default=0)
+        # ordering = ["-pk"]
 
     def __str__(self):
         return self.name
+
+
+class Organization(NameDescriptionBaseModel):
+    """Model representing an organization."""
+
+    address = models.TextField(blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    country = models.CharField(max_length=128, blank=True, null=True)
+    owner = models.CharField(max_length=255, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    website = models.URLField(blank=True, null=True)
+    metadata = models.JSONField(blank=True, null=True, default=dict)
+    logo = models.URLField(blank=True, null=True)
+    subscription = models.ForeignKey(
+        Subscription,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="companies",
+    )
+    subscription_start = models.DateField(blank=True, null=True)
+    subscription_end = models.DateField(blank=True, null=True)
+    total_leave = models.IntegerField(default=0)
+    max_user = models.IntegerField(default=5)
+    total_user = models.IntegerField(default=0)
+    subscription_status = models.CharField(
+        max_length=50,
+        choices=SubscriptionStatus.choices,
+        default=SubscriptionStatus.PENDING,
+    )
+    status = models.CharField(
+        max_length=50,
+        choices=Status.choices,
+        default=Status.DRAFT,
+    )
 
     class Meta:
         verbose_name = "Organization"
@@ -81,25 +79,25 @@ class Organization(NameDescriptionBaseModel):
 class UserManager(BaseUserManager):
     """Managers for users."""
 
-    def create_user(self, first_name, last_name, phone, password=None, **extra_fields):
-        if not phone:
-            raise ValueError("User must have a Phone Number.")
+    def create_user(self, first_name, last_name, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError("User must have an email address.")
 
         user = self.model(
-            first_name=first_name, last_name=last_name, phone=phone, **extra_fields
+            first_name=first_name, last_name=last_name, email=email, **extra_fields
         )
         user.set_password(password)
         user.save(using=self._db)
 
         return user
 
-    def create_superuser(self, first_name, last_name, phone, password):
+    def create_superuser(self, first_name, last_name, email, password):
         """Create a new superuser and return superuser"""
 
         user = self.create_user(
             first_name=first_name,
             last_name=last_name,
-            phone=phone,
+            email=email,
             password=password,
         )
 
@@ -142,20 +140,12 @@ class User(AbstractBaseUser, BaseModelWithUID):
         max_length=255,
         unique=True,
         db_index=True,
-        blank=True,
     )
     gender = models.CharField(
         max_length=20,
         blank=True,
         choices=UserGender.choices,
         default=UserGender.UNKNOWN,
-    )
-    image = models.ImageField(
-        "Profile_image",
-        upload_to="profile_images/",
-        default="profile_images/default.png",
-        blank=True,
-        null=True,
     )
     is_active = models.BooleanField(
         default=True,
@@ -166,6 +156,9 @@ class User(AbstractBaseUser, BaseModelWithUID):
     is_superuser = models.BooleanField(
         default=False,
     )
+    is_verified = models.BooleanField(
+        default=False,
+    )
     kind = models.CharField(
         max_length=20,
         choices=UserKind.choices,
@@ -174,7 +167,7 @@ class User(AbstractBaseUser, BaseModelWithUID):
 
     objects = UserManager()
 
-    USERNAME_FIELD = "phone"
+    USERNAME_FIELD = "email"
     REQUIRED_FIELDS = (
         "first_name",
         "last_name",
@@ -189,3 +182,28 @@ class User(AbstractBaseUser, BaseModelWithUID):
     class Meta:
         verbose_name = "System User"
         verbose_name_plural = "System Users"
+
+
+class OTP(BaseModelWithUID):
+    """Model to store OTPs for user verification."""
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="otps",
+    )
+    code = models.CharField(max_length=6)
+    is_used = models.BooleanField(default=False)
+    otp_type = models.CharField(
+        max_length=30,
+        choices=OTPType.choices,
+        default=OTPType.PASSWORD_RESET,
+    )
+
+    def __str__(self):
+        return f"OTP for {self.user.phone} - {'Used' if self.is_used else 'Unused'}"
+
+    class Meta:
+        verbose_name = "OTP"
+        verbose_name_plural = "OTPs"
+        ordering = ("-pk",)
