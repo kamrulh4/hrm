@@ -134,6 +134,7 @@ class User(AbstractBaseUser, BaseModelWithUID):
         max_length=20,
         db_index=True,
         unique=True,
+        blank=True,
         verbose_name="Phone Number",
     )
     email = models.EmailField(

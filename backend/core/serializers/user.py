@@ -52,7 +52,6 @@ class UserListSerializer(serializers.ModelSerializer):
             "email",
             "gender",
             "kind",
-            "image",
             "password",
             "confirm_password",
         )
@@ -106,7 +105,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             "phone",
             "email",
             "gender",
-            "image",
             "password",
             "confirm_password",
         )
@@ -142,7 +140,7 @@ class UserPasswordForceResetSerializer(serializers.Serializer):
 
 
 class ForgetPasswordSerializer(serializers.Serializer):
-    phone = serializers.CharField(required=True)
+    email = serializers.CharField(required=True)
     otp = serializers.CharField(required=False, allow_blank=True, max_length=6)
     password = serializers.CharField(
         write_only=True,
@@ -158,12 +156,12 @@ class ForgetPasswordSerializer(serializers.Serializer):
     )
 
     def validate(self, attrs):
-        phone = attrs.get("phone")
+        email = attrs.get("email")
         otp = attrs.get("otp")
         password = attrs.get("password")
         confirm_password = attrs.get("confirm_password")
 
-        if not phone:
+        if not email:
             raise serializers.ValidationError({"message": "Phone number is required."})
 
         if otp:
@@ -219,7 +217,7 @@ class MeSerializer(serializers.ModelSerializer):
             "phone",
             "email",
             "gender",
-            "image",
+            # "image",
             "kind",
             "created_at",
             "updated_at",
@@ -236,7 +234,7 @@ class MeSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     id = serializers.CharField(max_length=15, read_only=True)
     uid = serializers.CharField(max_length=64, read_only=True)
-    phone = serializers.CharField(required=True)
+    email = serializers.CharField(required=True)
     password = serializers.CharField(
         max_length=255,
         write_only=True,
@@ -244,12 +242,12 @@ class LoginSerializer(serializers.Serializer):
     )
 
     def validate(self, attrs):
-        phone = attrs.get("phone")
+        email = attrs.get("email", "")
         password = attrs.get("password")
 
-        if not phone:
+        if not email:
             raise serializers.ValidationError(
-                {"message": "Phone number is required for login"},
+                {"message": "Email is required for login"},
                 status.HTTP_400_BAD_REQUEST,
             )
 
@@ -260,7 +258,7 @@ class LoginSerializer(serializers.Serializer):
             )
 
         user = (
-            User.objects.filter(phone=phone, is_active=True)
+            User.objects.filter(email=email, is_active=True)
             .select_related("organization")
             .first()
         )

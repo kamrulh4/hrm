@@ -11,9 +11,9 @@ class SubscriptionBase(serializers.ModelSerializer):
             "uid",
             "name",
             "description",
-            "plan",
             "price",
-            "max_customers",
+            "max_user",
+            "duration_in_days",
         )
         read_only_fields = ("id", "uid")
 

@@ -17,8 +17,9 @@ class OrganizationBase(serializers.ModelSerializer):
             "subscription_status",
             "subscription_end_date",
             "logo",
-            "allowed_customer",
-            "total_customer",
+            "max_user",
+            "total_user",
+            "total_leave",
         )
         read_only_fields = ("id", "uid", "subscription_end_date", "logo")
 
@@ -32,8 +33,8 @@ class OrganizationLiteSerializer(serializers.Serializer):
         max_length=20, required=False, allow_blank=True
     )
     subscription_end_date = serializers.DateField(required=False, allow_null=True)
-    allowed_customer = serializers.IntegerField(required=False, allow_null=True)
-    total_customer = serializers.IntegerField(required=False, allow_null=True)
+    max_user = serializers.IntegerField(required=False, allow_null=True)
+    total_user = serializers.IntegerField(required=False, allow_null=True)
 
 
 class OrganizationListSerializer(OrganizationBase):
@@ -50,12 +51,6 @@ class OrganizationListSerializer(OrganizationBase):
 class OrganizationDetailSerializer(OrganizationListSerializer):
     class Meta(OrganizationListSerializer.Meta):
         fields = OrganizationListSerializer.Meta.fields + (
-            "router_ip",
-            "router_username",
-            "router_password",
-            "router_port",
-            "router_secret",
-            "router_ssl",
             "created_at",
             "updated_at",
         )
