@@ -21,7 +21,6 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
         "first_name",
         "last_name",
         "kind",
-        "status",
     ]
     fieldsets = (
         (
@@ -87,8 +86,14 @@ admin.site.register(User, UserAdmin)
 
 
 class SubscriptionAdmin(ModelAdmin):
-    list_display = ["id", "name", "name", "plan", "price", "max_customers", "status"]
-    list_filter = ("status", "plan")
+    list_display = [
+        "id",
+        "name",
+        "name",
+        "price",
+        "max_user",
+    ]
+    list_filter = ("name", "price")
     ordering = ["-id"]
 
 
@@ -96,7 +101,7 @@ admin.site.register(Subscription, SubscriptionAdmin)
 
 
 class OrganizationAdmin(ModelAdmin):
-    list_display = ["id", "name", "phone", "subscription_end_date", "status"]
+    list_display = ["id", "name", "phone", "subscription_end"]
     list_filter = ("status",)
     ordering = ["-id"]
 

@@ -1,71 +1,103 @@
 import factory
-from django.contrib.auth import get_user_model
+from factory.django import DjangoModelFactory
 from faker import Faker
+from datetime import date, timedelta
+import random
 
-from core.choices import UserKind, UserGender, SubscriptionType, SubscriptionStatus
-
-from core.models import Organization, Subscription
-
-User = get_user_model()
+from core.models import (
+    Subscription,
+    Organization,
+    User,
+    OTP,
+)
+from core.choices import (
+    SubscriptionStatus,
+    UserKind,
+    UserGender,
+    OTPType,
+)
+from common.choices import Status
 
 fake = Faker()
 
 
-class SubscriptionFactory(factory.django.DjangoModelFactory):
+class SubscriptionFactory(DjangoModelFactory):
+    """Factory for Subscription model."""
+
     class Meta:
-        model = "core.Subscription"
+        model = Subscription
 
-    name = factory.Faker("name")
-    description = factory.Faker("text", max_nb_chars=100)
-    plan = factory.Faker(
-        "random_element", elements=[choice.value for choice in SubscriptionType]
-    )
-    price = factory.Faker("pydecimal", left_digits=3, right_digits=2, positive=True)
-    max_customers = factory.Faker("random_int", min=10, max=1000)
+    name = factory.LazyAttribute(lambda _: fake.word().capitalize() + " Plan")
+    description = factory.LazyAttribute(lambda _: fake.sentence(nb_words=8))
+    price = factory.LazyAttribute(lambda _: round(random.uniform(10, 200), 2))
+    max_user = factory.LazyAttribute(lambda _: random.randint(5, 50))
+    duration_in_days = factory.LazyAttribute(lambda _: random.choice([30, 60, 90, 365]))
 
 
-class OrganizationFactory(factory.django.DjangoModelFactory):
+class OrganizationFactory(DjangoModelFactory):
+    """Factory for Organization model."""
+
     class Meta:
-        model = "core.Organization"
+        model = Organization
 
-    name = factory.Faker("company")
-    description = factory.Faker("text", max_nb_chars=100)
-    address = factory.Faker("address")
-    phone = factory.Faker("phone_number")
-    email = factory.Faker("company_email")
-    website = factory.Faker("url")
+    name = factory.LazyAttribute(lambda _: fake.company())
+    description = factory.LazyAttribute(lambda _: fake.catch_phrase())
+    address = factory.LazyAttribute(lambda _: fake.address())
+    phone = factory.LazyAttribute(lambda _: fake.phone_number())
+    country = factory.LazyAttribute(lambda _: fake.country())
+    owner = factory.LazyAttribute(lambda _: fake.name())
+    email = factory.LazyAttribute(lambda _: fake.company_email())
+    website = factory.LazyAttribute(lambda _: fake.url())
+    metadata = factory.LazyAttribute(lambda _: {"industry": fake.word()})
+    logo = factory.LazyAttribute(lambda _: fake.image_url())
     subscription = factory.Iterator(Subscription().get_all_actives())
-    subscription_status = factory.Faker(
-        "random_element", elements=[choice.value for choice in SubscriptionStatus]
+    subscription_start = factory.LazyFunction(date.today)
+    subscription_end = factory.LazyAttribute(
+        lambda o: o.subscription_start
+        + timedelta(days=random.choice([30, 60, 90, 365]))
     )
-    router_ip = factory.Faker("ipv4")
-    router_username = factory.Faker("user_name")
-    router_password = factory.Faker("password")
-    router_port = 8728
-    router_secret = factory.Faker("word")
-    router_ssl = False
-    allowed_customer = 100
-    total_customer = 0
+    total_leave = factory.LazyAttribute(lambda _: random.randint(5, 30))
+    max_user = factory.LazyAttribute(lambda _: random.randint(5, 50))
+    total_user = factory.LazyAttribute(lambda _: random.randint(1, 20))
+    subscription_status = factory.LazyAttribute(
+        lambda _: random.choice(SubscriptionStatus.values)
+    )
+    status = factory.LazyAttribute(lambda _: random.choice(Status.values))
 
 
-class UserFactory(factory.django.DjangoModelFactory):
+class UserFactory(DjangoModelFactory):
+    """Factory for User model."""
+
     class Meta:
         model = User
 
-    first_name = factory.Faker("first_name")
-    last_name = factory.Faker("last_name")
     organization = factory.Iterator(Organization().get_all_actives())
-    # phone = factory.Sequence(lambda n: f"987654321{n % 10}")
-    phone = factory.LazyAttribute(lambda _: fake.unique.phone_number())
+    first_name = factory.LazyAttribute(lambda _: fake.first_name())
+    last_name = factory.LazyAttribute(lambda _: fake.last_name())
     email = factory.LazyAttribute(
-        lambda o: f"{o.first_name.lower()}.{o.last_name.lower()}@example.com"
+        lambda o: f"{o.first_name.lower()}.{o.last_name.lower()}@{fake.free_email_domain()}"
     )
-    gender = factory.Faker(
-        "random_element", elements=[choice.value for choice in UserGender]
-    )
-    kind = factory.Faker(
-        "random_element", elements=[choice.value for choice in UserKind]
-    )
-    password = factory.PostGenerationMethodCall("set_password", "defaultpassword")
-    is_staff = False
+    phone = factory.LazyAttribute(lambda _: fake.msisdn()[:11])
+    gender = factory.LazyAttribute(lambda _: random.choice(UserGender.values))
     is_active = True
+    is_staff = factory.LazyAttribute(lambda _: fake.boolean(chance_of_getting_true=20))
+    is_superuser = factory.LazyAttribute(
+        lambda _: fake.boolean(chance_of_getting_true=10)
+    )
+    is_verified = factory.LazyAttribute(
+        lambda _: fake.boolean(chance_of_getting_true=60)
+    )
+    kind = factory.LazyAttribute(lambda _: random.choice(UserKind.values))
+    password = factory.PostGenerationMethodCall("set_password", "12345678")
+
+
+class OTPFactory(DjangoModelFactory):
+    """Factory for OTP model."""
+
+    class Meta:
+        model = OTP
+
+    user = factory.Iterator(User().get_all_actives())
+    code = factory.LazyAttribute(lambda _: str(random.randint(100000, 999999)))
+    is_used = factory.LazyAttribute(lambda _: fake.boolean(chance_of_getting_true=30))
+    otp_type = factory.LazyAttribute(lambda _: random.choice(OTPType.values))

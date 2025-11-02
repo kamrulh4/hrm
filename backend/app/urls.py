@@ -10,7 +10,6 @@ from django.http import JsonResponse
 
 from rest_framework import permissions
 
-from customer.views.customer import Dashboard
 
 SWAGGER_BASE_URL = "https://api.mikrolink.artsensebd.com"
 
@@ -40,15 +39,6 @@ urlpatterns = [
     # include user endpoints
     path("api/v1/users", include("core.urls.user"), name="user-urls"),
     # include package endpoints
-    path("api/v1/packages", include("customer.urls.package"), name="package-urls"),
-    # include customer endpoints
-    path("api/v1/customers", include("customer.urls.customer"), name="customer-urls"),
-    # include payment endpoints
-    path("api/v1/payments", include("customer.urls.payment"), name="payment-urls"),
-    # include core endpoints
-    # Dashboard endpoints
-    path("api/v1/dashboard", Dashboard.as_view(), name="dashboard"),
-    path("api/v1/tasks", include("customer.urls.tasks"), name="customer-tasks-urls"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

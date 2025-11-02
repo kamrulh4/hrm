@@ -1,7 +1,7 @@
 from django.urls import path
 
 
-from core.views.organization import OrganizationList, OrganizationDetail, CustomerSessionList
+from core.views.organization import OrganizationList, OrganizationDetail
 
 
 urlpatterns = [
@@ -10,10 +10,5 @@ urlpatterns = [
         "/<str:uid>",
         OrganizationDetail.as_view(),
         name="organization-detail",
-    ),
-    path(
-        "/active/sessions",
-        CustomerSessionList.as_view(),
-        name="organization-customer-session-list",
     ),
 ]
