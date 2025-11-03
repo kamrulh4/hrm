@@ -296,7 +296,7 @@ class LoginSerializer(serializers.Serializer):
                 {"message": "Your organization is not active. Please contact support."}
             )
 
-        if user.organization and not user.organization.subscription_end_date:
+        if user.organization and not user.organization.subscription_end:
             raise serializers.ValidationError(
                 {
                     "message": "Your organization subscription end date is not set. Please contact support."
@@ -305,7 +305,8 @@ class LoginSerializer(serializers.Serializer):
 
         if (
             user.organization
-            and user.organization.subscription_end_date < timezone.now().date()
+            and user.organization.subscription_end
+            and user.organization.subscription_end < timezone.now().date()
         ):
             raise serializers.ValidationError(
                 {
@@ -325,9 +326,9 @@ class LoginSerializer(serializers.Serializer):
             "organization": {
                 "id": user.organization_id,
                 "name": user.organization.name if user.organization else None,
-                "subscription_end_date": (
-                    user.organization.subscription_end_date.isoformat()
-                    if user.organization
+                "subscription_end": (
+                    user.organization.subscription_end.isoformat()
+                    if user.organization and user.organization.subscription_end
                     else None
                 ),
             },
