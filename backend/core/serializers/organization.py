@@ -15,13 +15,13 @@ class OrganizationBase(serializers.ModelSerializer):
             "website",
             "subscription",
             "subscription_status",
-            "subscription_end_date",
+            "subscription_end",
             "logo",
             "max_user",
             "total_user",
             "total_leave",
         )
-        read_only_fields = ("id", "uid", "subscription_end_date", "logo")
+        read_only_fields = ("id", "uid", "subscription_end", "logo")
 
 
 class OrganizationLiteSerializer(serializers.Serializer):

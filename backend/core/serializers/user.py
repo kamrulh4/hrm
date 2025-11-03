@@ -69,11 +69,18 @@ class UserListSerializer(serializers.ModelSerializer):
 
 class UserDetailSerializer(UserListSerializer):
     class Meta(UserListSerializer.Meta):
-        fields = UserListSerializer.Meta.fields + (
-            "status",
-            "is_staff",
-        )
+        fields = UserListSerializer.Meta.fields + ("is_staff",)
         read_only_fields = UserListSerializer.Meta.read_only_fields + ()
+
+    def update(self, instance, validated_data):
+        validated_data.pop("confirm_password", None)
+        password = validated_data.pop("password", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):

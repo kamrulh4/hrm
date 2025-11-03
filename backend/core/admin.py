@@ -89,7 +89,6 @@ class SubscriptionAdmin(ModelAdmin):
     list_display = [
         "id",
         "name",
-        "name",
         "price",
         "max_user",
     ]
