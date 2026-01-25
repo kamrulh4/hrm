@@ -1,7 +1,5 @@
-export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <h1>HRM Web</h1>
-    </div>
-  );
+import { ComponentExample } from "@/components/component-example";
+
+export default function Page() {
+return <ComponentExample />;
 }
